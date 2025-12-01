@@ -253,7 +253,7 @@ Potential improvements for deeper networking exploration:
 
 ## Authors
 
-[Add your name(s) and contributions here]
+Ilay Dvir and Max
 
 ## License
 
