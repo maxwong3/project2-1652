@@ -5,6 +5,7 @@ Contains game entities, constants, and state management logic.
 
 import time
 import math
+import random
 from typing import Dict, List, Tuple, Optional
 
 # Game Constants
@@ -15,8 +16,11 @@ PLAYER_SPEED = 200  # pixels per second
 BULLET_SIZE = 5
 BULLET_SPEED = 400  # pixels per second
 BULLET_LIFETIME = 3.0  # seconds
+AMMO_BOX_SIZE = 15
+AMMO_BOX_LIFETIME = 10.0 
 TICK_RATE = 30  # server ticks per second
 RESPAWN_TIME = 3.0  # seconds
+MAX_AMMO = 20 # ammo per player
 
 
 class Player:
@@ -32,6 +36,7 @@ class Player:
         self.alive = True
         self.respawn_time = 0.0
         self.color = self._generate_color(player_id)
+        self.ammo = MAX_AMMO
 
     def _generate_color(self, player_id: str) -> Tuple[int, int, int]:
         """Generate a unique color based on player ID."""
@@ -69,6 +74,7 @@ class Player:
         """Try to respawn the player if respawn time has elapsed."""
         if not self.alive and time.time() >= self.respawn_time:
             self.alive = True
+            self.ammo = MAX_AMMO
             # Respawn at random position
             import random
             self.x = random.randint(PLAYER_SIZE, ARENA_WIDTH - PLAYER_SIZE)
@@ -86,7 +92,8 @@ class Player:
             'vy': self.vy,
             'score': self.score,
             'alive': self.alive,
-            'color': self.color
+            'color': self.color,
+            'ammo': self.ammo
         }
 
 
@@ -124,7 +131,26 @@ class Bullet:
             'vx': self.vx,
             'vy': self.vy
         }
+    
+class AmmoBox:
+    """Represents an ammo refilling box in game."""
 
+    def __init__(self, box_id: str):
+        self.id = box_id
+        self.x = random.randint(AMMO_BOX_SIZE, ARENA_WIDTH-AMMO_BOX_SIZE)
+        self.y = random.randint(AMMO_BOX_SIZE, ARENA_HEIGHT-AMMO_BOX_SIZE)
+        self.spawn_time = time.time()
+
+    def is_expired(self) -> bool:
+        return time.time() - self.spawn_time > AMMO_BOX_LIFETIME
+    
+    def to_dict(self) -> dict:
+        return {
+            'id': self.id,
+            "x": self.x,
+            "y": self.y,
+        }
+        
 
 class GameState:
     """Manages the complete game state."""
@@ -132,8 +158,12 @@ class GameState:
     def __init__(self):
         self.players: Dict[str, Player] = {}
         self.bullets: Dict[str, Bullet] = {}
+        self.ammo_boxes: Dict[str, AmmoBox] = {}
         self.last_update = time.time()
         self.bullet_counter = 0
+        self.ammo_box_counter = 0
+        self.last_ammo_spawn = time.time()
+        self.next_ammo_interval = random.uniform(5, 15)
 
     def add_player(self, player_id: str) -> Player:
         """Add a new player to the game."""
@@ -157,6 +187,10 @@ class GameState:
         player = self.players[owner_id]
         if not player.alive:
             return None
+        
+        # check if player still has ammo
+        if player.ammo <= 0:
+            return None
 
         # Normalize direction
         dx, dy = direction
@@ -170,6 +204,7 @@ class GameState:
         # Create bullet
         bullet_id = f"{owner_id}_{self.bullet_counter}"
         self.bullet_counter += 1
+        player.ammo -= 1
 
         # Spawn bullet slightly in front of player
         offset = PLAYER_SIZE + BULLET_SIZE
@@ -182,6 +217,12 @@ class GameState:
         )
         self.bullets[bullet_id] = bullet
         return bullet
+
+    def spawn_ammo_box(self):
+        box_id = f"ammo_{self.ammo_box_counter}"
+        self.ammo_box_counter += 1
+        box = AmmoBox(box_id)
+        self.ammo_boxes[box_id] = box
 
     def update(self, dt: float):
         """Update all game entities."""
@@ -201,13 +242,29 @@ class GameState:
         for bullet_id in expired_bullets:
             del self.bullets[bullet_id]
 
+        # Update/spawn ammo boxes here
+        expired_boxes = []
+        for box_id, ammo_box in self.ammo_boxes.items():
+            if ammo_box.is_expired():
+                expired_boxes.append(box_id)
+
+        for box_id in expired_boxes:
+            del self.ammo_boxes[box_id]
+
+        # Spawn boxes
+        if time.time() - self.last_ammo_spawn > self.next_ammo_interval:
+            self.spawn_ammo_box()
+            self.last_ammo_spawn = time.time()
+            self.next_ammo_interval = random.uniform(5, 15)
+
         # Check collisions
         self._check_collisions()
 
     def _check_collisions(self):
         """Check for bullet-player collisions."""
         bullets_to_remove = []
-
+        boxes_to_remove = []
+ 
         for bullet_id, bullet in self.bullets.items():
             for player_id, player in self.players.items():
                 # Don't hit the shooter
@@ -234,10 +291,30 @@ class GameState:
             if bullet_id in self.bullets:
                 del self.bullets[bullet_id]
 
+        # Check ammo box collection/collision
+        for box_id, box in self.ammo_boxes.items():
+            for player in self.players.values():
+                if not player.alive:
+                    continue
+                dx = box.x - player.x
+                dy = box.y - player.y
+                distance = math.sqrt(dx * dx + dy * dy)
+                if (distance < (PLAYER_SIZE + AMMO_BOX_SIZE)):
+                    player.ammo = MAX_AMMO
+                    boxes_to_remove.append(box_id)
+
+        for box_id in boxes_to_remove:
+            if box_id in self.ammo_boxes:
+                del self.ammo_boxes[box_id]
+
+        
+
+
     def to_dict(self) -> dict:
         """Convert game state to dictionary for network transmission."""
         return {
             'players': {pid: p.to_dict() for pid, p in self.players.items()},
             'bullets': {bid: b.to_dict() for bid, b in self.bullets.items()},
+            'ammo_boxes': {bid: b.to_dict() for bid, b in self.ammo_boxes.items()},
             'timestamp': time.time()
         }

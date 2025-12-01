@@ -16,7 +16,6 @@ HOST = '0.0.0.0'
 PORT = 5555
 TICK_INTERVAL = 1.0 / TICK_RATE
 
-
 class GameServer:
     """Authoritative game server."""
 

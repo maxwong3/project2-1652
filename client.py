@@ -11,7 +11,7 @@ import sys
 import time
 import math
 from typing import Optional, Tuple
-from game_state import (ARENA_WIDTH, ARENA_HEIGHT, PLAYER_SIZE, BULLET_SIZE,
+from game_state import (ARENA_WIDTH, ARENA_HEIGHT, PLAYER_SIZE, BULLET_SIZE, AMMO_BOX_SIZE,
                         PLAYER_SPEED)
 
 # Client Configuration
@@ -239,6 +239,7 @@ class GameClient:
 
             players = self.game_state.get('players', {})
             bullets = self.game_state.get('bullets', {})
+            ammo_boxes = self.game_state.get('ammo_boxes', {})
 
         # Draw arena border
         pygame.draw.rect(self.screen, (100, 100, 100),
@@ -271,6 +272,11 @@ class GameClient:
             )
             text_rect = text.get_rect(center=(x, y - PLAYER_SIZE - 15))
             self.screen.blit(text, text_rect)
+
+        # Draw ammo boxes
+        for box in ammo_boxes.values():
+            x, y = int(box['x']), int(box['y'])
+            pygame.draw.rect(self.screen, (255, 0, 0), (x, y, AMMO_BOX_SIZE, AMMO_BOX_SIZE))
 
         # Draw crosshair at mouse position
         mx, my = self.mouse_pos
@@ -308,10 +314,15 @@ class GameClient:
             "Left Click: Shoot",
             "ESC: Quit"
         ]
+
         y_offset = ARENA_HEIGHT - 130
         for i, line in enumerate(controls):
             text = self.small_font.render(line, True, (150, 150, 150))
             self.screen.blit(text, (10, y_offset + i * 22))
+
+        # Draw ammo count
+        ammo_count = self.small_font.render(f"Ammo: {players[self.player_id]["ammo"]}", True, (200, 200, 200))
+        self.screen.blit(ammo_count, (700, 550))
 
         # Draw scoreboard
         scoreboard = sorted(players.values(), key=lambda p: p['score'], reverse=True)[:5]
