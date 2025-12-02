@@ -159,40 +159,6 @@ python client.py 192.168.1.100 5555
    - Players disconnecting and rejoining
    - Network latency effects
 
-### Reproducibility Checklist
-
-- [ ] Server starts without errors
-- [ ] Client can connect to server
-- [ ] Multiple clients can connect simultaneously
-- [ ] Player movement is synchronized across clients
-- [ ] Bullets appear on all clients when fired
-- [ ] Hit detection works (players respawn when hit)
-- [ ] Scores update correctly
-- [ ] Network stats display (FPS and TPS)
-- [ ] Clients can disconnect gracefully
-- [ ] Server handles client disconnections without crashing
-
-## Troubleshooting
-
-**Client can't connect:**
-- Verify server is running
-- Check IP address and port
-- Ensure firewall allows connections
-- Try `localhost` for local testing
-
-**Game is laggy:**
-- Check network latency
-- Close other network applications
-- Reduce number of players
-
-**Import errors:**
-- Install pygame: `pip install pygame`
-- Verify Python version: `python --version`
-
-**Port already in use:**
-- Change PORT in server.py to different value (e.g., 5556)
-- Update clients to use new port
-
 ## Game Configuration
 
 You can modify these constants in `game_state.py`:
@@ -205,6 +171,7 @@ PLAYER_SPEED = 200       # Player movement speed
 BULLET_SPEED = 400       # Bullet speed
 TICK_RATE = 30           # Server update rate (ticks per second)
 RESPAWN_TIME = 3.0       # Respawn delay in seconds
+MAX_AMMO = 20            # Default ammo limit
 ```
 
 ## Project Goals
@@ -229,27 +196,6 @@ This project demonstrates:
 
 4. **Reproducibility**: Clear setup instructions, well-documented code, and testable on any platform with Python and pygame.
 
-## Code Structure
-
-```
-project2/
-├── game_state.py    # Shared game logic (300+ lines)
-├── server.py        # Game server (250+ lines)
-├── client.py        # Game client (350+ lines)
-├── README.md        # This file
-└── project-02.pdf   # Project specification
-```
-
-## Future Enhancements
-
-Potential improvements for deeper networking exploration:
-
-- Client-side prediction for lower perceived latency
-- Lag compensation techniques
-- UDP implementation for comparison with TCP
-- Delta compression for reduced bandwidth
-- Dead reckoning for smoother movement
-- Packet loss simulation for testing robustness
 
 ## Authors
 
